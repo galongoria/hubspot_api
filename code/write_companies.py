@@ -46,6 +46,14 @@ def update_company(company_id, properties):
 
 def bulk_update_company(co_dict):
 
+	""" Takes a dictionary and updates properties associated with a group of companies.
+		
+		Dictionary values should be a property json.
+
+		Dictionary keys should be a company id.
+
+	"""
+
 	for key, value in co_dict.items():
 
 		update_company(key, value)
