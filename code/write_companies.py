@@ -1,10 +1,14 @@
 import hubspot
 from pprint import pprint
-from hubspot.crm.companies import ApiException, SimplePublicObjectInput
+from hubspot.crm.companies import (
+    ApiException,
+    SimplePublicObjectInput,
+    BatchInputSimplePublicObjectBatchInput,
+)
 
 
 def write_object_association(
-    company_id, to_object_type, to_object_id, association_type
+    client, company_id, to_object_type, to_object_id, association_type
 ):
 
     try:
@@ -19,7 +23,7 @@ def write_object_association(
         print("Exception when calling associations_api->create: %s\n" % e)
 
 
-def bulk_associations(assoc_dict, to_object_type, association_type):
+def bulk_associations(client, assoc_dict, to_object_type, association_type):
 
     # """Writes bulk associations for given companies and associatied object id's.
 
@@ -31,29 +35,33 @@ def bulk_associations(assoc_dict, to_object_type, association_type):
         write_object_association(key, to_object_type, value, association_type)
 
 
-def update_company(company_id, properties):
+def update_company(client, company_id, properties):
 
     simple_public_object_input = SimplePublicObjectInput(properties=properties)
     try:
         api_response = client.crm.companies.basic_api.update(
-            company_id=company_id
-            simple_public_object_input=simple_public_object_input,
+            company_id=company_id, simple_public_object_input=simple_public_object_input
         )
         pprint(api_response)
+
     except ApiException as e:
         print("Exception when calling basic_api->update: %s\n" % e)
 
 
-def bulk_update_company(co_dict):
+def batch_update_company(client, dictionary):
 
-	""" Takes a dictionary and updates properties associated with a group of companies.
-		
-		Dictionary values should be a property json.
+    batch_input_simple_public_object_batch_input = (
+        BatchInputSimplePublicObjectBatchInput(inputs=dictionary)
+    )
 
-		Dictionary keys should be a company id.
+    try:
 
-	"""
+        api_response = client.crm.companies.batch_api.update(
+            batch_input_simple_public_object_batch_input=batch_input_simple_public_object_batch_input
+        )
 
-	for key, value in co_dict.items():
+        pprint(api_response)
 
-		update_company(key, value)
+    except ApiException as e:
+
+        print("Exception when calling batch_api->update: %s\n" % e)

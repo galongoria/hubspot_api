@@ -11,10 +11,12 @@ from hubspot.crm.properties import (
 
 
 def create_company_property(
+    client,
     name,
     label,
     type,
     field_type,
+    group_name,
     options,
     display_order,
     has_unique_value,
@@ -42,7 +44,7 @@ def create_company_property(
         print("Exception when calling core_api->create: %s\n" % e)
 
 
-def update_company_property():
+def update_company_property(client):
 
     property_update = PropertyUpdate(
         label=label,
@@ -50,7 +52,7 @@ def update_company_property():
         field_type=field_type,
         group_name=group_name,
         options= options,
-        display_order=display_order=,
+        display_order=display_order,
         hidden=hidden,
         form_field=form_field,
     )
