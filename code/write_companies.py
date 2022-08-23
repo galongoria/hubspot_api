@@ -48,7 +48,7 @@ def update_company(client, company_id, properties):
         print("Exception when calling basic_api->update: %s\n" % e)
 
 
-def batch_update_company(client, dictionary):
+def batch_update_company(client, dict_list):
 
     batch_input_simple_public_object_batch_input = (
         BatchInputSimplePublicObjectBatchInput(inputs=dictionary)

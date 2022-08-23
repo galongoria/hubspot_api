@@ -5,7 +5,7 @@ import pandas as pd
 from dotenv import load_dotenv
 from map_industries import make_ind_dict
 from write_properties import create_company_property
-from write_companies import batch_update_company
+from write_companies import update_company
 
 load_dotenv()
 
@@ -106,14 +106,14 @@ def make_aff_visible_dictionary():
 
 	d1["hs_ind"] = d1["hs_ind"].astype(str) + d2["hs_ind"].astype(str)
 	d1["hs_ind"] = d1[~d1["hs_ind"].isnull()]["hs_ind"].apply(
-		lambda x: "".join([f"{s.strip()};" for s in set(x.split(";"))])
+		lambda x: "".join([f"{s.strip()};" for s in set(x.split(";")) if len(x)>0])
 	)
 
 	return [
 		{
 			"id": str(k),
 			"properties": {
-				"inv_inds": str(d1["hs_ind"].values[n]),
+				"inv_inds": re.sub(r'\s', '_', str(d1["hs_ind"].values[n])).lower(),
 				"name": str(d1["Company name"].values[n]),
 			},
 		}
@@ -121,9 +121,27 @@ def make_aff_visible_dictionary():
 	]
 
 
-if __name__ == "__main__":
+
+
+def main():
 
 	client = hubspot.Client.create(access_token=os.getenv("pm_token"))
+
+	dict_list = make_aff_visible_dictionary()
+	print(dict_list)
+
+	# for dictionary in dict_list:
+
+	# 	if len(dictionary['properties']['inv_inds']) == 0:
+	# 		continue
+	# 	else:
+	# 		update_company(client, dictionary['id'], dictionary['properties'])
+
+
+
+
+if __name__ == "__main__":
+
 
 	# create_company_property(
 	# 	client,
@@ -139,14 +157,7 @@ if __name__ == "__main__":
 	# 	True,
 	# )
 
-	dictionary = make_aff_visible_dictionary()
-
-	for n, key in enumerate(dictionary):
-
-		
-
-
-	batch_update_company(client, make_aff_visible_dictionary())
+	main()
 
 
 
