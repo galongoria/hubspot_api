@@ -51,7 +51,7 @@ def update_company(client, company_id, properties):
 def batch_update_company(client, dict_list):
 
     batch_input_simple_public_object_batch_input = (
-        BatchInputSimplePublicObjectBatchInput(inputs=dictionary)
+        BatchInputSimplePublicObjectBatchInput(inputs=dict_list)
     )
 
     try:

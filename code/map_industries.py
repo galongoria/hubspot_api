@@ -571,7 +571,7 @@ def make_ind_dict():
     }
 
 
-def make_tool_dict():
+def make_tag_dict():
 
     return {
         "AI": [
