@@ -15,10 +15,12 @@ IND_DIR = os.path.join(CLEAN_DIR, "industry_mapping")
 VC_INDUSTRY_COLS = os.path.join(RAW_DIR, "hs", "vc_industry_columns.csv")
 STARTPATH = os.path.join(CLEAN_DIR, 'scraped_data', 'crunchbase', 'cb_starts_main_scraped.csv')
 MAPPING_OUTPATH = os.path.join(IND_DIR, "cb_starts_mapped.csv")
+START_HERF_PATH = os.path.join(CLEAN_DIR, 'scraped_data', 'crunchbase','cb_inv_overview_scraped.csv')
+VC_PATH = os.path.join(RAW_DIR, 'hs', 'vc_list_export.csv')
+
 
 """
 Below is a reference for the internal property names in HubSpot:
-
 
 Investment Focus: inv_inds
 Record ID: id
@@ -107,31 +109,15 @@ def map_subindustries(ind_list):
     return ";".join(ind_list)
 
 
-def combine_tables(internal, new_col):
+def make_inv_focus_dict(df, column):
 
-    d1, d2 = map_groups(
-        VC_INDUSTRY_COLS, "Focus", "vis_ind", new_col, r"/|,", make_tag_dict()
-    ).fillna(""), map_groups(
-        VC_INDUSTRY_COLS,
-        "Industry (Affinity)",
-        "aff_ind",
-        new_col,
-        r"/|;",
-        make_tag_dict(),
-    ).fillna(
-        ""
-    )
 
-    d1[new_col] = d1[new_col].astype(str) + d2[new_col].astype(str)
-    d1[new_col] = d1[~d1[new_col].isnull()][new_col].apply(
-        lambda x: "".join([f"{s.strip()};" for s in set(x.split(";")) if len(x) > 0])
-    )
 
     return [
         {
             "id": str(k),
             "properties": {
-                internal: re.sub(r"\s", "_", str(d1[new_col].values[n])).lower(),
+                'inv_inds': re.sub(r"\s", "_", str(d1[new_col].values[n])).lower(),
                 "name": str(d1["Company name"].values[n]),
             },
         }
@@ -160,26 +146,43 @@ def rate_limit_dict(client, rate, dict_list):
                     print(f"Just updated batches {i}-{i+rate} \n Sleeping shhhh...")
                     time.sleep(10)
 
-def main():
+def map_tags_to_investors():
 
     df = map_groups(explode_df(STARTPATH, 'industries', ','), 'inv_inds', make_ind_dict())
     df = aggregate(df, {
             'inv_inds': lambda x: ("".join(str(s.strip()) for s in set(x))).strip(), 
-            'href': lambda x: ''.join([s for s in set(x)]),
-            'name': lambda x: ''.join([s for s in set(x)]),
-            'description': lambda x: ''.join([s for s in set(x)]),
-            'ref': lambda x: ''.join([s for s in set(x)]),
+            'href': lambda x: list(set(x))[0],
+            'name': lambda x: list(set(x))[0],
+            'description': lambda x: list(set(x))[0],
+            'ref': lambda x: list(set(x))[0],
     })
     df = mental_health(df)
     df['inv_inds'] = df['inv_inds'].apply(lambda x: x.split(';'))
     df['inv_inds'] = df['inv_inds'].apply(lambda x: map_subindustries(x))
-    return df
+    df = pd.read_csv(START_HERF_PATH).merge(df, how='left', left_on='startup_href', right_on='href')
+
+    return df[~df['inv_inds'].isnull()]
+
+def aggregate_industries():
+    
+    
+    return map_tags_to_investors().groupby(['id']).agg(
+        {
+            "inv_inds": lambda x: ';'.join(set(''.join(set(x)).split(';'))),
+            "id": lambda x: list(set(x))[0],
+        }
+    
+    )
+
+def final_merge():
+
+    return pd.read_csv(VC_PATH).merge(aggregate_industries(), how='left', left_on='Company ID', right_on='id')
 
 
 
 
 if __name__ == "__main__":
 
-    main().to_csv(MAPPING_OUTPATH)
+    print(final_merge())
 
     # client = hubspot.Client.create(access_token=os.getenv("pm_token"))
