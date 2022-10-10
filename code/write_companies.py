@@ -1,4 +1,5 @@
 import hubspot
+import os
 from pprint import pprint
 from hubspot.crm.companies import (
     ApiException,
@@ -23,19 +24,24 @@ def write_object_association(
         print("Exception when calling associations_api->create: %s\n" % e)
 
 
-def bulk_associations(client, assoc_dict, to_object_type, association_type):
+def bulk_associations(assoc_dict, to_object_type, association_type):
 
-    # """Writes bulk associations for given companies and associatied object id's.
+    """Writes bulk associations for given companies and associatied object id's.
 
-    # 	Object should be a dictionary; key should be company_id and value should be to_object_id.
-    # """
+    Object should be a dictionary; key should be company_id and value should be to_object_id.
+    
+    """
+    
+    client = hubspot.Client.create(access_token=os.getenv("pm_token"))
 
     for key, value in assoc_dict.items():
 
         write_object_association(key, to_object_type, value, association_type)
 
 
-def update_company(client, company_id, properties):
+def update_company(company_id, properties):
+    
+    client = hubspot.Client.create(access_token=os.getenv("pm_token"))
 
     simple_public_object_input = SimplePublicObjectInput(properties=properties)
     try:
@@ -48,7 +54,9 @@ def update_company(client, company_id, properties):
         print("Exception when calling basic_api->update: %s\n" % e)
 
 
-def batch_update_company(client, dict_list):
+def batch_update_company(dict_list):
+    
+    client = hubspot.Client.create(access_token=os.getenv("pm_token"))
 
     batch_input_simple_public_object_batch_input = (
         BatchInputSimplePublicObjectBatchInput(inputs=dict_list)

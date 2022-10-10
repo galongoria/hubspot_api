@@ -11,7 +11,6 @@ from hubspot.crm.properties import (
 
 
 def create_company_property(
-    client,
     name,
     label,
     type,
@@ -23,6 +22,7 @@ def create_company_property(
     hidden,
     form_field,
 ):
+    client = hubspot.Client.create(access_token=os.getenv("pm_token"))
     property_create = PropertyCreate(
         name=name,
         label=label,
