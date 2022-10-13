@@ -410,7 +410,7 @@ def make_ind_dict():
             "penetration testing",
             "privacy",
         ],
-        "Consumer Durables": [
+        "Consumer Non-Durables": [
             "Bakery",
             "Coffee",
             "Confectionery",
@@ -419,7 +419,6 @@ def make_ind_dict():
             "Food Processing",
             "Fruit",
             "Grocery",
-            "Nutrition",
             "Recipes",
             "Seafood",
             "Snack Food",
@@ -427,7 +426,6 @@ def make_ind_dict():
             "food, beverages and tobacco",
             "food products",
             "vending and concessions",
-            "DIY",
             "Tobacco",
             "other consumer products and services",
             "consumer non-durables",
@@ -534,6 +532,7 @@ def make_ind_dict():
             "Emergency Medicine",
             "Employee Benefits",
             "Fertility",
+            "Nutrition",
             "First Aid",
             "Genetics",
             "Health Care",

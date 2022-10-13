@@ -24,20 +24,25 @@ VC_PATH = os.path.join(RAW_DIR, "hs", "vc_list_export.csv")
 
 
 """
-Below is a reference for the internal property names in HubSpot:
+#### Below is a reference for the internal property names in HubSpot ####
 
-Investment Focus: pf_inds
+Portfolio Industries: pf_inds
+Portfolio Focus: top5_inds
+Portfolio Main Interest: top1_inds
+Investing Tags: pf_tags
+Top 5 Tags: top5_tags
+Top Tag: top1_tags
 Record ID: id
 Company name: name
 Investor Tags: inv_tags
 
+###########################################################################
 """
 
+def make_industry_options(df, column):
 
-def make_industry_options(df):
-
-    df = df[~df["pf_inds"].isnull()]
-    tags = "".join(list(df["pf_inds"].values))
+    df = df[~df[column].isnull()]
+    tags = "".join(list(df[column].values))
     labels = list(set(tags.split(";")))
     labels.pop(0)
     values = [re.sub(r" ", "_", label).lower() for label in labels]
@@ -46,6 +51,35 @@ def make_industry_options(df):
         {"label": label, "value": values[n], "displayOrder": n, "hidden": False}
         for n, label in enumerate(labels)
     ]
+
+def counter(item_list):
+    
+    count_dict = {}
+    for item in item_list:
+        if item in count_dict:
+            count_dict[item] += 1
+        else:
+            count_dict[item] = 1
+    return count_dict
+
+def rank_top5(count_dict, column):
+    
+    data = {column: list(count_dict.keys()), 'count': list(count_dict.values())}
+    df = pd.DataFrame.from_dict(data)
+    df.sort_values(['count'], ascending=False,inplace=True)
+    top5 = df[column].values[0:5]
+
+    
+    return ''.join([f';{t}' for t in top5])
+
+def rank_top1(count_dict, column):
+
+    data = {column: list(count_dict.keys()), 'count': list(count_dict.values())}
+    df = pd.DataFrame.from_dict(data)
+    df.sort_values(['count'], ascending=False,inplace=True)
+    if len(df) > 0:
+
+        return df[column].values[0]
 
 
 def explode_df(csv_inpath, industry_column, split_on):
@@ -123,16 +157,16 @@ def map_subindustries(ind_list):
     return ";".join(ind_list)
 
 
-def make_property_dict(df):
+def make_property_dict(df, column):
 
-    df = df[~df["pf_inds"].isnull()]
+    df = df[~df[column].isnull()]
+    print(df)
 
     return [
         {
             "id": str(k),
             "properties": {
-                # "name": str(df['Company name'].values[n]),
-                "pf_inds": re.sub(r' ','_', str(df["pf_inds"].values[n])).lower(),
+                column: re.sub(r' ','_', str(df[column].values[n])).lower(),
             },
         }
         for n, k in enumerate(df["Record ID"].values)
@@ -161,7 +195,7 @@ def rate_limit_dict(rate, dict_list):
                     time.sleep(10)
 
 
-def map_tags_to_investors():
+def map_inds_to_investors():
 
     df = map_groups(
         explode_df(STARTPATH, "industries", ","), "pf_inds", make_ind_dict()
@@ -186,10 +220,54 @@ def map_tags_to_investors():
     return df[~df["pf_inds"].isnull()]
 
 
+def map_tags_to_investors():
+
+    df = map_groups(
+        explode_df(STARTPATH, "industries", ","), "pf_tags", make_tag_dict()
+    )
+    df = aggregate(
+        df,
+        {
+            "pf_tags": lambda x: ("".join(str(s.strip()) for s in set(x))).strip(),
+            "href": lambda x: list(set(x))[0],
+            "name": lambda x: list(set(x))[0],
+            "description": lambda x: list(set(x))[0],
+            "ref": lambda x: list(set(x))[0],
+        },
+    )
+
+    df["pf_tags"] = df["pf_tags"].apply(lambda x: x.split(";"))
+    df = pd.read_csv(START_HERF_PATH).merge(
+        df, how="left", left_on="startup_href", right_on="href"
+    )
+
+    return df[~df["pf_tags"].isnull()]
+
+
+def get_top1_industries():
+
+    df = map_inds_to_investors().groupby(['id']).agg({'pf_inds': lambda x: [s for s in (''.join(x).split(';')) if len(s) > 0]})
+    df['counts'] = df['pf_inds'].apply(lambda x: counter(x))
+    df['top1_inds'] = df['counts'].apply(lambda x: rank_top1(x, 'industry'))
+    df['Record ID'] = df.index
+
+    return df
+
+
+def get_top5_industries():
+    
+    df = map_inds_to_investors().groupby(['id']).agg({'pf_inds': lambda x: [s for s in (''.join(x).split(';')) if len(s) > 0]})
+    df['counts'] = df['pf_inds'].apply(lambda x: counter(x))
+    df['top5_inds'] = df['counts'].apply(lambda x: rank_top5(x, 'industry'))
+    df['Record ID'] = df.index
+    
+    return df
+
+
 def aggregate_industries():
 
-    return (
-        map_tags_to_investors()
+    df = (
+        map_inds_to_investors()
         .groupby(["id"])
         .agg(
             {
@@ -197,25 +275,60 @@ def aggregate_industries():
             }
         )
     )
+    df['Record ID'] = df.index
+    return df
 
+def aggregate_tags():
 
-if __name__ == "__main__":
-
-    client = hubspot.Client.create(access_token=os.getenv("pm_token"))
-    df = pd.read_csv(VC_PATH).merge(
-        aggregate_industries(), how="left", left_on="Record ID", right_index=True
+    df = (
+        map_tags_to_investors()
+        .groupby(["id"])
+        .agg(
+            {
+                "pf_tags": lambda x: ';'.join(set(sum(x,[]))),
+            }
+        )
     )
+
+    df['Record ID'] = df.index
+    return df
+
+def get_top1_tags():
+
+    df = map_tags_to_investors().groupby(['id']).agg({'pf_tags': lambda x: [s for s in sum(x,[]) if len(s) >0]})
+    df['counts'] = df['pf_tags'].apply(lambda x: counter(x))
+    df['top1_tags'] = df['counts'].apply(lambda x: rank_top1(x, 'tag'))
+    df['Record ID'] = df.index
+
+    return df
+
+def get_top5_tags():
+    
+    df = map_tags_to_investors().groupby(['id']).agg({'pf_tags': lambda x: [s for s in sum(x,[]) if len(s) >0]})
+    df['counts'] = df['pf_tags'].apply(lambda x: counter(x))
+    df['top5_tags'] = df['counts'].apply(lambda x: rank_top5(x, 'tag'))
+    df['Record ID'] = df.index
+    
+    return df
+
+
+# if __name__ == "__main__":
+    
+
+
+
     ### Step 1 ###
     # If your property does not already include every value in the current dictionary, create a new one or update the current one. Keep the first object mapped to make_industry_options; will always be true.
 
-    # industry_dict_list = make_industry_options(df)
+    # df = aggregate_industries()
+    # industry_dict_list = make_industry_options(df, 'pf_inds')
     # create_company_property('pf_inds',
     #                         'Portfolio Industries',
     #                         'enumeration',
     #                         'checkbox',
     #                         'companyinformation',
     #                         industry_dict_list,
-    #                         1,
+    #                         2,
     #                         False,
     #                         False,
     #                         True)
@@ -224,5 +337,12 @@ if __name__ == "__main__":
     # Update the comapnies, but USE THE RATE LIMITER. If you don't the update will fail
     # IF YOU MAKE TOO MANY REQUESTS HUBSPOT WILL BE BIG MAD, SO BE CAREFUL.
 
-    prop_dict_list = make_property_dict(df)
-    rate_limit_dict(100, prop_dict_list)
+    # df_list = [aggregate_industries(), get_top5_industries(), get_top1_industries()]
+    # col_list = ['pf_inds', 'top5_inds', 'top1_inds']
+
+    # for i, df in enumerate(df_list):
+
+    #     prop_dict_list = make_property_dict(df, col_list[i])
+
+    #     print(prop_dict_list)
+    #     rate_limit_dict(100, prop_dict_list)
