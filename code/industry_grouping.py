@@ -8,19 +8,29 @@ from write_companies import update_company, batch_update_company
 
 load_dotenv()
 
+
+# DIRCCTORIES
 DBDIR = "C:/Users/galon/Sputnik ATX Team Dropbox/Programming Datasets"
-RAW_DIR = os.path.join(DBDIR, "data", "raw")
-CLEAN_DIR = os.path.join(DBDIR, "data", "clean")
+RAW_DIR = os.path.join(DBDIR, "tables", "raw")
+CLEAN_DIR = os.path.join(DBDIR, "tables", "clean")
 IND_DIR = os.path.join(CLEAN_DIR, "industry_mapping")
-VC_INDUSTRY_COLS = os.path.join(RAW_DIR, "hs", "vc_industry_columns.csv")
-STARTPATH = os.path.join(
-    CLEAN_DIR, "scraped_data", "crunchbase", "cb_starts_main_scraped.csv"
-)
-MAPPING_OUTPATH = os.path.join(IND_DIR, "cb_starts_mapped.csv")
+
+
+# INPATHS
 START_HERF_PATH = os.path.join(
     CLEAN_DIR, "scraped_data", "crunchbase", "cb_inv_overview_scraped.csv"
 )
 VC_PATH = os.path.join(RAW_DIR, "hs", "vc_list_export.csv")
+VC_INDUSTRY_COLS = os.path.join(RAW_DIR, "hs", "vc_industry_columns.csv")
+STARTPATH = os.path.join(
+    CLEAN_DIR, "scraped_data", "crunchbase", "cb_starts_main_scraped.csv"
+)
+TX_ANGEL_INPATH = os.path.join(CLEAN_DIR, 'misc_cleaning', 'tx_angel_contacts_clean.csv')
+
+
+# OUTPATHS
+MAPPING_OUTPATH = os.path.join(IND_DIR, "cb_starts_mapped.csv")
+
 
 
 """
@@ -195,7 +205,7 @@ def rate_limit_dict(rate, dict_list):
                     time.sleep(10)
 
 
-def map_inds_to_investors():
+def startup_ind_main():
 
     df = map_groups(
         explode_df(STARTPATH, "industries", ","), "pf_inds", make_ind_dict()
@@ -220,7 +230,7 @@ def map_inds_to_investors():
     return df[~df["pf_inds"].isnull()]
 
 
-def map_tags_to_investors():
+def startup_tag_main():
 
     df = map_groups(
         explode_df(STARTPATH, "industries", ","), "pf_tags", make_tag_dict()
@@ -263,21 +273,6 @@ def get_top5_industries():
     
     return df
 
-
-def aggregate_industries():
-
-    df = (
-        map_inds_to_investors()
-        .groupby(["id"])
-        .agg(
-            {
-                "pf_inds": lambda x: ";".join(set("".join(set(x)).split(";"))),
-            }
-        )
-    )
-    df['Record ID'] = df.index
-    return df
-
 def aggregate_tags():
 
     df = (
@@ -312,6 +307,21 @@ def get_top5_tags():
     return df
 
 
+def aggregate_industries(df):
+
+    df = (
+        map_inds_to_investors(inpath)
+        .groupby(["id"])
+        .agg(
+            {
+                "pf_inds": lambda x: ";".join(set("".join(set(x)).split(";"))),
+            }
+        )
+    )
+    df['Record ID'] = df.index
+    return df
+
+
 # if __name__ == "__main__":
     
 
@@ -319,6 +329,12 @@ def get_top5_tags():
 
     ### Step 1 ###
     # If your property does not already include every value in the current dictionary, create a new one or update the current one. Keep the first object mapped to make_industry_options; will always be true.
+
+    ###### MAPPING FUNCTIONS #######
+
+    # Companies scraped from Crunchbase:
+
+    # df = 
 
     # df = aggregate_industries()
     # industry_dict_list = make_industry_options(df, 'pf_inds')

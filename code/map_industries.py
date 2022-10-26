@@ -131,6 +131,7 @@ def make_ind_dict():
             "jewelry",
             "lingerie",
             "Eyewear",
+            "apparel and accessories",
         ],
         "Commerce": [
             "Auctions",
@@ -218,13 +219,14 @@ def make_ind_dict():
         "Consumer Durables":[
             "Comics",
             "consumer durables",
+            "toys",
         ],
         "Consumer Services": [
             "consumer services general",
             "retail general",
             "consumer services",
         ],
-        "Service Industry": ["service industry"],
+        "Service Industry": ["service industry", "services (non-financial)"],
         "Laundry and Dry-Cleaning": [
             "laundry and dry-cleaning",
             "Laundry",
@@ -248,6 +250,7 @@ def make_ind_dict():
             "supply chain and logistics",
             "fleet management",
             "freight service",
+            "commercial transportation",
             "water transportation",
         ],
         "Restaurants": [
@@ -277,6 +280,7 @@ def make_ind_dict():
             "travel and tourism",
             "hospitality",
             "hotel",
+            "hotels and leisure",
             "timeshare",
         ],
         "Manufacturing": [
@@ -321,6 +325,7 @@ def make_ind_dict():
             "natural resources",
             "water",
             "precious metals",
+            "other materials",
             "water purification",
         ],
         "Women's Products": [
@@ -386,6 +391,8 @@ def make_ind_dict():
             "Fuel Cell",
             "Oil and Gas",
             "Power Grid",
+            "energy equipment",
+            "energy services",
             "oil",
             "nuclear",
             "climate",
@@ -430,6 +437,7 @@ def make_ind_dict():
             "other consumer products and services",
             "consumer non-durables",
             "Consumer Non-Durables",
+            "fast-moving consumer goods",
         ],
         "Alcohol": ["Craft Beer", "Wine And Spirits", "Spirits", "Brewing"],
         "FoodTech": ["foodtech"],
@@ -559,6 +567,8 @@ def make_ind_dict():
             "senior care",
             "dietary supplements",
             "medical devices",
+            "healthcare",
+            "healthcare services",
         ],
         "HealthTech": [
             "caretech",
@@ -571,6 +581,7 @@ def make_ind_dict():
             "digital healthcare",
             "electronic health record (ehr)",
             "mHealth",
+            "healthcare devices and supplies",
         ],
         "InsurTech": ["InsurTech"],
         "Telecommunications": [
@@ -580,6 +591,7 @@ def make_ind_dict():
             "messaging and telecommunications",
             "communications",
             "voip",
+            "communications and networking",
             "FoIP",
             "messaging",
             "email",
@@ -597,7 +609,9 @@ def make_ind_dict():
             "it management",
             "information and communications technology (ict)",
             "reputation",
+            "it services",
             "identity management",
+            "other information technology",
         ],
         "Pharmaceuticals": [
             "pharmaceuticals and biotechnology",
@@ -784,6 +798,7 @@ def make_ind_dict():
             "field-programmable gate array (fpga)",
             "embedded systems",
             "qr codes",
+            "computer hardware",
         ],
         "DeepTech": [
             "deeptech",
@@ -989,6 +1004,8 @@ def make_tag_dict():
             "b2b saas",
             "commercial",
             "enterprise",
+            "commercial products",
+            "other business products and services",
         ],
         "B2C": [
             "B2C",
@@ -996,6 +1013,7 @@ def make_tag_dict():
             "Consumer",
             "consumer tech",
             "consumer software",
+            "consumer products and services (b2c)",
         ],
         "Millennials": ["millennials"],
         "Gen Z": ["generation z"],
