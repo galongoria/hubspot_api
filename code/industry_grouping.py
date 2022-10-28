@@ -3,7 +3,7 @@ import regex as re
 import pandas as pd
 from dotenv import load_dotenv
 from map_industries import make_ind_dict, make_tag_dict
-from write_properties import create_company_property
+from write_properties import create_property
 from write_companies import update_company, batch_update_company
 
 load_dotenv()
@@ -25,7 +25,8 @@ VC_INDUSTRY_COLS = os.path.join(RAW_DIR, "hs", "vc_industry_columns.csv")
 STARTPATH = os.path.join(
     CLEAN_DIR, "scraped_data", "crunchbase", "cb_starts_main_scraped.csv"
 )
-TX_ANGEL_INPATH = os.path.join(CLEAN_DIR, 'misc_cleaning', 'tx_angel_contacts_clean.csv')
+TX_ANGEL_HS_INPATH = os.path.join(RAW_DIR, 'hs', 'tx_angel_export.csv')
+TX_ANGEL_RAW_INPATH = os.path.join(RAW_DIR, 'misc_source', 'tx_angel_contacts.csv')
 
 
 # OUTPATHS
@@ -49,18 +50,6 @@ Investor Tags: inv_tags
 ###########################################################################
 """
 
-def make_industry_options(df, column):
-
-    df = df[~df[column].isnull()]
-    tags = "".join(list(df[column].values))
-    labels = list(set(tags.split(";")))
-    labels.pop(0)
-    values = [re.sub(r" ", "_", label).lower() for label in labels]
-
-    return [
-        {"label": label, "value": values[n], "displayOrder": n, "hidden": False}
-        for n, label in enumerate(labels)
-    ]
 
 def counter(item_list):
     
@@ -104,7 +93,7 @@ def explode_df(csv_inpath, industry_column, split_on):
     df["industries"] = df["industries"].apply(lambda x: re.sub(r"&", "and", str(x)))
     df["industries"] = df["industries"].apply(lambda x: x.lower().strip())
 
-    return df.drop("Unnamed: 0", axis=1)
+    return df
 
 
 def map_groups(exploded_df, new_col, map_dict):
@@ -253,112 +242,183 @@ def startup_tag_main():
 
     return df[~df["pf_tags"].isnull()]
 
+def tx_angel_ind_main():
 
-def get_top1_industries():
+    df = map_groups(explode_df(TX_ANGEL_RAW_INPATH, "Preferred Industry", ","), "tx_angel_inds", make_ind_dict())
+    df = aggregate(
+        df,
+        {
+            "tx_angel_inds": lambda x: ("".join(str(s.strip()) for s in set(x))).strip(),
+            "Description": lambda x: list(set(x))[0],
+            "Investor Name": lambda x: list(set(x))[0],
+        },
+    )
+    df["tx_angel_inds"] = df["tx_angel_inds"].apply(lambda x: x.split(";"))
+    df["tx_angel_inds"] = df["tx_angel_inds"].apply(lambda x: map_subindustries(x))
+    hs_df = pd.read_csv(TX_ANGEL_HS_INPATH)
+    hs_df['name'] = hs_df['First Name'] + ' ' + hs_df['Last Name']
+    df = df.merge(hs_df, how='right', left_on=['Investor Name', 'Description'],right_on=['name', 'About'])
+    df['tx_angel_inds'] = df['tx_angel_inds'].astype('str')
 
-    df = map_inds_to_investors().groupby(['id']).agg({'pf_inds': lambda x: [s for s in (''.join(x).split(';')) if len(s) > 0]})
-    df['counts'] = df['pf_inds'].apply(lambda x: counter(x))
+    return df[df['tx_angel_inds'].str.contains(';')]
+
+
+def tx_angel_tag_main():
+
+    df = map_groups(explode_df(TX_ANGEL_RAW_INPATH, "Preferred Industry", ","), "tx_angel_tags", make_tag_dict())
+    df = aggregate(
+        df,
+        {
+            "tx_angel_tags": lambda x: ("".join(str(s.strip()) for s in set(x))).strip(),
+            "Description": lambda x: list(set(x))[0],
+            "Investor Name": lambda x: list(set(x))[0],
+        },
+    )
+    df["tx_angel_tags"] = df["tx_angel_tags"].apply(lambda x: x.split(";"))
+    df["tx_angel_tags"] = df["tx_angel_tags"].apply(lambda x: map_subindustries(x))
+    hs_df = pd.read_csv(TX_ANGEL_HS_INPATH)
+    hs_df['name'] = hs_df['First Name'] + ' ' + hs_df['Last Name']
+    df = df.merge(hs_df, how='right', left_on=['Investor Name', 'Description'],right_on=['name', 'About'])
+    df['tx_angel_tags'] = df['tx_angel_tags'].astype('str')
+
+    return df[df['tx_angel_tags'].str.contains(';')]
+
+
+def get_top1_industries(df, internal_label):
+
+    df['counts'] = df[internal_label].apply(lambda x: counter(x))
     df['top1_inds'] = df['counts'].apply(lambda x: rank_top1(x, 'industry'))
     df['Record ID'] = df.index
 
     return df
 
 
-def get_top5_industries():
+def get_top5_industries(df, internal_label):
     
-    df = map_inds_to_investors().groupby(['id']).agg({'pf_inds': lambda x: [s for s in (''.join(x).split(';')) if len(s) > 0]})
-    df['counts'] = df['pf_inds'].apply(lambda x: counter(x))
+    df['counts'] = df[internal_label].apply(lambda x: counter(x))
     df['top5_inds'] = df['counts'].apply(lambda x: rank_top5(x, 'industry'))
     df['Record ID'] = df.index
     
     return df
 
-def aggregate_tags():
+def get_top1_tags(df, internal_label):
 
-    df = (
-        map_tags_to_investors()
-        .groupby(["id"])
-        .agg(
-            {
-                "pf_tags": lambda x: ';'.join(set(sum(x,[]))),
-            }
-        )
-    )
-
-    df['Record ID'] = df.index
-    return df
-
-def get_top1_tags():
-
-    df = map_tags_to_investors().groupby(['id']).agg({'pf_tags': lambda x: [s for s in sum(x,[]) if len(s) >0]})
-    df['counts'] = df['pf_tags'].apply(lambda x: counter(x))
+    df['counts'] = df[internal_label].apply(lambda x: counter(x))
     df['top1_tags'] = df['counts'].apply(lambda x: rank_top1(x, 'tag'))
     df['Record ID'] = df.index
 
     return df
 
-def get_top5_tags():
+def get_top5_tags(df, internal_label):
     
-    df = map_tags_to_investors().groupby(['id']).agg({'pf_tags': lambda x: [s for s in sum(x,[]) if len(s) >0]})
-    df['counts'] = df['pf_tags'].apply(lambda x: counter(x))
+    df['counts'] = df[internal_label].apply(lambda x: counter(x))
     df['top5_tags'] = df['counts'].apply(lambda x: rank_top5(x, 'tag'))
     df['Record ID'] = df.index
     
     return df
 
 
-def aggregate_industries(df):
+def make_options_dataframe(mapping_function, name, groupby):
+
+    """ mapping_function: this should be a function with 'main' in the method's name
+
+    name: this is a column of the mapped industry, which will also be the internal hubspot name
+
+    groupby: this is the record id column, which was different across projects and why it's included as an arugment
+
+    """
 
     df = (
-        map_inds_to_investors(inpath)
-        .groupby(["id"])
+        mapping_function
+        .groupby([groupby])
         .agg(
             {
-                "pf_inds": lambda x: ";".join(set("".join(set(x)).split(";"))),
+                name: lambda x: ";".join(set("".join(set(x)).split(";"))),
             }
         )
     )
     df['Record ID'] = df.index
     return df
 
+def make_options_dict(df, column):
 
-# if __name__ == "__main__":
-    
+    df = df[~df[column].isnull()]
+    tags = "".join(list(df[column].values))
+    labels = list(set(tags.split(";")))
+    labels.pop(0)
+    values = [re.sub(r" ", "_", label).lower() for label in labels]
+
+    return [
+        {"label": label, "value": values[n], "displayOrder": n, "hidden": False}
+        for n, label in enumerate(labels)
+    ]
 
 
+if __name__ == "__main__":
 
-    ### Step 1 ###
+    ### STEP 1 ###
     # If your property does not already include every value in the current dictionary, create a new one or update the current one. Keep the first object mapped to make_industry_options; will always be true.
+    """
 
-    ###### MAPPING FUNCTIONS #######
+                            ################## Example ######################
 
-    # Companies scraped from Crunchbase:
 
-    # df = 
+                            df = make_options_dataframe(startup_ind_main(), 'pf_inds', 'id')
+                            options_dict_list = make_options_dict(df, 'pf_inds')
+                            create_property('pf_inds',
+                                            'Portfolio Industries',
+                                            'enumeration',
+                                            'checkbox',
+                                            'companyinformation',
+                                            options_dict_list,
+                                            1,
+                                            False,
+                                            False,
+                                            True,
+                                            'company')
 
-    # df = aggregate_industries()
-    # industry_dict_list = make_industry_options(df, 'pf_inds')
-    # create_company_property('pf_inds',
-    #                         'Portfolio Industries',
-    #                         'enumeration',
-    #                         'checkbox',
-    #                         'companyinformation',
-    #                         industry_dict_list,
-    #                         2,
-    #                         False,
-    #                         False,
-    #                         True)
+                            #################################################
+    """
+
+
+    # df = make_options_dataframe(tx_angel_tag_main(), 'tx_angel_tags', 'Record ID - Contact')
+    # options_dict_list = make_industry_options(df, 'tx_angel_tags')
+    # create_property(
+    #             'tx_angel_inds',
+    #             'Preferred Industries (TX Angels)',
+    #             'enumeration',
+    #             'checkbox',
+    #             'contactinformation',
+    #             industry_dict_list,
+    #             1,
+    #             False,
+    #             False,
+    #             True,
+    #             'contact'
+
+    #     )
 
     ### Step 2 ###
     # Update the comapnies, but USE THE RATE LIMITER. If you don't the update will fail
     # IF YOU MAKE TOO MANY REQUESTS HUBSPOT WILL BE BIG MAD, SO BE CAREFUL.
+    """
 
-    # df_list = [aggregate_industries(), get_top5_industries(), get_top1_industries()]
-    # col_list = ['pf_inds', 'top5_inds', 'top1_inds']
+                            #################### Example ####################
 
-    # for i, df in enumerate(df_list):
+                                df = startup_ind_main().groupby(['id']).agg({'pf_inds': lambda x: [s for s in (''.join(x).split(';')) if len(s) > 0]})
 
-    #     prop_dict_list = make_property_dict(df, col_list[i])
+                                df_list = [industry_options_dataframe(startup_ind_main(), 'pf_inds', 'id'), get_top5_industries(df, 'pf_inds'), get_top1_industries(df, 'pf_inds')]
+                                col_list = ['pf_inds', 'top5_inds', 'top1_inds']
 
-    #     print(prop_dict_list)
-    #     rate_limit_dict(100, prop_dict_list)
+                                for i, df in enumerate(df_list):
+
+                                    prop_dict_list = make_property_dict(df, col_list[i])
+
+                                    print(prop_dict_list)
+                                    rate_limit_dict(100, prop_dict_list)
+
+                            #################################################
+    """
+
+    
+

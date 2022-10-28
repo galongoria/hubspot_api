@@ -10,7 +10,7 @@ from hubspot.crm.properties import (
 )
 
 
-def create_company_property(
+def create_property(
     name,
     label,
     type,
@@ -21,6 +21,7 @@ def create_company_property(
     has_unique_value,
     hidden,
     form_field,
+    object_type,
 ):
     client = hubspot.Client.create(access_token=os.getenv("pm_token"))
     property_create = PropertyCreate(
@@ -37,7 +38,7 @@ def create_company_property(
     )
     try:
         api_response = client.crm.properties.core_api.create(
-            object_type="company", property_create=property_create
+            object_type=object_type, property_create=property_create
         )
         pprint(api_response)
     except ApiException as e:
