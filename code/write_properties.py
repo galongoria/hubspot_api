@@ -22,7 +22,7 @@ def create_property(
     hidden,
     form_field,
     object_type,
-):
+    ):
     client = hubspot.Client.create(access_token=os.getenv("pm_token"))
     property_create = PropertyCreate(
         name=name,
@@ -45,7 +45,20 @@ def create_property(
         print("Exception when calling core_api->create: %s\n" % e)
 
 
-def update_company_property(client):
+def update_property(
+    name,
+    label,
+    type,
+    field_type,
+    group_name,
+    options,
+    display_order,
+    hidden,
+    form_field,
+    object_type,
+    ):
+
+    client = hubspot.Client.create(access_token=os.getenv("pm_token"))
 
     property_update = PropertyUpdate(
         label=label,
@@ -59,7 +72,7 @@ def update_company_property(client):
     )
     try:
         api_response = client.crm.properties.core_api.update(
-            object_type="company",
+            object_type=object_type,
             property_name=name,
             property_update=property_update,
         )

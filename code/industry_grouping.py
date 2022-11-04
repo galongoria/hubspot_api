@@ -1,10 +1,11 @@
-import os, time, hubspot
+import os, time, hubspot, datetime
 import regex as re
 import pandas as pd
 from dotenv import load_dotenv
 from map_industries import make_ind_dict, make_tag_dict
-from write_properties import create_property
+from write_properties import create_property, update_property
 from write_companies import update_company, batch_update_company
+from write_contacts import batch_update_contact
 
 load_dotenv()
 
@@ -17,16 +18,14 @@ IND_DIR = os.path.join(CLEAN_DIR, "industry_mapping")
 
 
 # INPATHS
-START_HERF_PATH = os.path.join(
-    CLEAN_DIR, "scraped_data", "crunchbase", "cb_inv_overview_scraped.csv"
-)
+START_HERF_PATH = os.path.join(CLEAN_DIR, "scraped_data", "crunchbase", "cb_inv_overview_scraped.csv")
 VC_PATH = os.path.join(RAW_DIR, "hs", "vc_list_export.csv")
 VC_INDUSTRY_COLS = os.path.join(RAW_DIR, "hs", "vc_industry_columns.csv")
-STARTPATH = os.path.join(
-    CLEAN_DIR, "scraped_data", "crunchbase", "cb_starts_main_scraped.csv"
-)
+STARTPATH = os.path.join(CLEAN_DIR, "scraped_data", "crunchbase", "cb_startups_main.csv")
 TX_ANGEL_HS_INPATH = os.path.join(RAW_DIR, 'hs', 'tx_angel_export.csv')
 TX_ANGEL_RAW_INPATH = os.path.join(RAW_DIR, 'misc_source', 'tx_angel_contacts.csv')
+MERGED_VC_PATH = os.path.join(CLEAN_DIR, 'scraped_data', 'crunchbase', 'cb_vc_main_merged.csv')
+INVOV_INPATH = os.path.join(CLEAN_DIR,"scraped_data","crunchbase", "cb_inv_overview_scraped.csv")
 
 
 # OUTPATHS
@@ -46,8 +45,17 @@ Top Tag: top1_tags
 Record ID: id
 Company name: name
 Investor Tags: inv_tags
+Texas Angel Industries: tx_angel_inds
+Texas Angel Tags: tx_angel_tags
+Preferred Stages: stage
 
-###########################################################################
+
+
+#### Rate limits for companies and contacts must be below a certain threshold ####
+
+Set the rate limit for companies at no more than 10
+Set the rate limit for contacts at no more than 10
+
 """
 
 
@@ -60,6 +68,38 @@ def counter(item_list):
         else:
             count_dict[item] = 1
     return count_dict
+
+
+
+def count_stage(l):
+    
+    new_l = []
+    
+    for string in l:
+
+        if 'unknown' in string.lower():
+            continue
+        if 'from' in string.lower():
+            string = string.lower().split('from')[0].strip()
+            string = ' '.join([s.capitalize() for s in string.split()])
+        elif 'discover' in string.lower().strip():
+            string = string.lower().split('discover')[0].strip()
+            string =  ' '.join([s.capitalize() for s in string.split()])
+        new_l.append(string)
+    return set(new_l)
+
+def get_stages(csv_inpath):
+
+    df = pd.read_csv(csv_inpath)
+    df["date"] = pd.to_datetime(df["date"])
+    df = df[df["date"] > datetime.datetime(2019, 12, 31)]
+    df = df.groupby(["id"]).agg(
+        {
+            "stage": lambda x: list(x)
+        }
+    )
+    df["Record ID"] = df.index.astype("int64")
+    return df
 
 def rank_top5(count_dict, column):
     
@@ -172,7 +212,7 @@ def make_property_dict(df, column):
     ]
 
 
-def rate_limit_dict(rate, dict_list):
+def rate_limit_company(rate, dict_list):
 
     end = False
 
@@ -198,7 +238,7 @@ def startup_ind_main():
 
     df = map_groups(
         explode_df(STARTPATH, "industries", ","), "pf_inds", make_ind_dict()
-    )
+    ).drop(['Unnamed: 0'],axis=1)
     df = aggregate(
         df,
         {
@@ -255,7 +295,7 @@ def tx_angel_ind_main():
     )
     df["tx_angel_inds"] = df["tx_angel_inds"].apply(lambda x: x.split(";"))
     df["tx_angel_inds"] = df["tx_angel_inds"].apply(lambda x: map_subindustries(x))
-    hs_df = pd.read_csv(TX_ANGEL_HS_INPATH)
+    hs_df = pd.read_csv(TX_ANGEL_HS_INPATH).rename(columns={'Record ID - Contact': 'id'})
     hs_df['name'] = hs_df['First Name'] + ' ' + hs_df['Last Name']
     df = df.merge(hs_df, how='right', left_on=['Investor Name', 'Description'],right_on=['name', 'About'])
     df['tx_angel_inds'] = df['tx_angel_inds'].astype('str')
@@ -276,12 +316,20 @@ def tx_angel_tag_main():
     )
     df["tx_angel_tags"] = df["tx_angel_tags"].apply(lambda x: x.split(";"))
     df["tx_angel_tags"] = df["tx_angel_tags"].apply(lambda x: map_subindustries(x))
-    hs_df = pd.read_csv(TX_ANGEL_HS_INPATH)
+    hs_df = pd.read_csv(TX_ANGEL_HS_INPATH).rename(columns={'Record ID - Contact': 'id'})
     hs_df['name'] = hs_df['First Name'] + ' ' + hs_df['Last Name']
     df = df.merge(hs_df, how='right', left_on=['Investor Name', 'Description'],right_on=['name', 'About'])
     df['tx_angel_tags'] = df['tx_angel_tags'].astype('str')
 
     return df[df['tx_angel_tags'].str.contains(';')]
+
+
+
+def inv_stages_main():
+    
+    df = get_stages(INVOV_INPATH)
+    df['stage'] = df['stage'].apply(lambda x: f";{';'.join(count_stage(x))}")
+    return df[df['stage'].str.contains(';')]
 
 
 def get_top1_industries(df, internal_label):
@@ -320,7 +368,7 @@ def get_top5_tags(df, internal_label):
 
 def make_options_dataframe(mapping_function, name, groupby):
 
-    """ mapping_function: this should be a function with 'main' in the method's name
+    """ mapping_function: this should be a function with 'main' in the method's name; output is a dataframe
 
     name: this is a column of the mapped industry, which will also be the internal hubspot name
 
@@ -333,7 +381,7 @@ def make_options_dataframe(mapping_function, name, groupby):
         .groupby([groupby])
         .agg(
             {
-                name: lambda x: ";".join(set("".join(set(x)).split(";"))),
+                name: lambda x: f"{';'.join(set(sum(x, [])))}",
             }
         )
     )
@@ -363,40 +411,27 @@ if __name__ == "__main__":
                             ################## Example ######################
 
 
-                            df = make_options_dataframe(startup_ind_main(), 'pf_inds', 'id')
-                            options_dict_list = make_options_dict(df, 'pf_inds')
-                            create_property('pf_inds',
-                                            'Portfolio Industries',
-                                            'enumeration',
-                                            'checkbox',
-                                            'companyinformation',
-                                            options_dict_list,
-                                            1,
-                                            False,
-                                            False,
-                                            True,
-                                            'company')
+                            df = tx_angel_tag_main().groupby(['id']).agg({'tx_angel_tags': lambda x: [s for s in (''.join(x).split(';')) if len(s) > 0]})
+                            df = make_options_dataframe(df, 'tx_angel_tags', 'id')
+                            options_dict_list = make_options_dict(df, 'tx_angel_tags')
+                            print(options_dict_list)
+                            create_property(
+                                        'tx_angel_tags',
+                                        'Preferred Tags (TX Angels)',
+                                        'enumeration',
+                                        'checkbox',
+                                        'contactinformation',
+                                        options_dict_list,
+                                        1,
+                                        False,
+                                        False,
+                                        True,
+                                        'contact'
+                                )
 
                             #################################################
     """
 
-
-    # df = make_options_dataframe(tx_angel_tag_main(), 'tx_angel_tags', 'Record ID - Contact')
-    # options_dict_list = make_industry_options(df, 'tx_angel_tags')
-    # create_property(
-    #             'tx_angel_inds',
-    #             'Preferred Industries (TX Angels)',
-    #             'enumeration',
-    #             'checkbox',
-    #             'contactinformation',
-    #             industry_dict_list,
-    #             1,
-    #             False,
-    #             False,
-    #             True,
-    #             'contact'
-
-    #     )
 
     ### Step 2 ###
     # Update the comapnies, but USE THE RATE LIMITER. If you don't the update will fail
@@ -419,6 +454,7 @@ if __name__ == "__main__":
 
                             #################################################
     """
+
 
     
 
