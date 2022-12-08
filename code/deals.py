@@ -1,4 +1,5 @@
 from write_deals import batch_update_deals
+from read_deals import get_deals_by_pipeline, list_deal_associations
 import pandas as pd
 import os
 
@@ -20,7 +21,13 @@ def batch_move_deal_dict(inpath, stage):
 
 
 
+
+
+
 if __name__ == "__main__":
+
+    dict_list = get_deals_by_pipeline([], 'default')
+
 
     print('No excecutions written below main')
 
