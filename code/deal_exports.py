@@ -1,16 +1,11 @@
 from write_deals import batch_update_deals
-from read_deals import get_deals_by_pipeline, list_deal_associations
-from read_companies import batch_read_companies
-from read_contacts import batch_read_contacts
+from read import get_deals_by_pipeline, list_deal_associations, batch_read_companies, batch_read_contacts
 import pandas as pd
 import os
 
 DBDIR = "C:/Users/galon/Sputnik ATX Team Dropbox/Programming Datasets"
 CLEAN_DIR = os.path.join(DBDIR, "tables", "clean")
 REACHOUT_DIR = os.path.join(CLEAN_DIR, "reachouts")
-
-
-BATCH1_PATH = os.path.join(REACHOUT_DIR, "saveday_batch1.csv")
 
 
 ### PUT CALLS ###
