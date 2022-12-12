@@ -29,9 +29,9 @@ def bulk_associations(assoc_dict, to_object_type, association_type):
     """Writes bulk associations for given companies and associatied object id's.
 
     Object should be a dictionary; key should be company_id and value should be to_object_id.
-    
+
     """
-    
+
     client = hubspot.Client.create(access_token=os.getenv("pm_token"))
 
     for key, value in assoc_dict.items():
@@ -40,7 +40,7 @@ def bulk_associations(assoc_dict, to_object_type, association_type):
 
 
 def update_company(company_id, properties):
-    
+
     client = hubspot.Client.create(access_token=os.getenv("pm_token"))
 
     simple_public_object_input = SimplePublicObjectInput(properties=properties)
@@ -55,7 +55,7 @@ def update_company(company_id, properties):
 
 
 def batch_update_company(dict_list):
-    
+
     client = hubspot.Client.create(access_token=os.getenv("pm_token"))
 
     batch_input_simple_public_object_batch_input = (
