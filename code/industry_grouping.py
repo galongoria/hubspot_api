@@ -3,9 +3,9 @@ import regex as re
 import pandas as pd
 from dotenv import load_dotenv
 from map_industries import make_ind_dict, make_tag_dict
-from write_properties import create_property, update_property
-from write_companies import update_company, batch_update_company
-from write_contacts import batch_update_contact
+from write import create_property, update_property
+from write import update_company, batch_update_company
+from write import batch_update_contact
 
 load_dotenv()
 

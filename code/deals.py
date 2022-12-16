@@ -1,7 +1,8 @@
-from write_deals import batch_update_deals
+from write import batch_update_deals
 from read import get_deals_by_pipeline, list_deal_associations, batch_read_companies, batch_read_contacts
 import pandas as pd
 import os
+from send_exports import send_csv
 
 DBDIR = "C:/Users/galon/Sputnik ATX Team Dropbox/Programming Datasets"
 CLEAN_DIR = os.path.join(DBDIR, "tables", "clean")
@@ -100,7 +101,8 @@ def merge_associations(df):
 
 if __name__ == "__main__":
 
-    associations_dictionary = get_deals_by_pipeline([], "default")
+    
 
+    associations_dictionary = get_deals_by_pipeline([], "default")
     df = get_associations(associations_dictionary)
-    print(merge_associations(df))
+    send_csv("galongoria0@gmail.com", "Austin", "saveday_reachouts", df)
