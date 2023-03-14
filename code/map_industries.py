@@ -1,15 +1,17 @@
-## to-do
-# Need to differentiate between traditional schools and platforms, e-learning and such
-
 ### CHANGE LOG ###
 ## 9/26/22 
     # 12:59 pm
     # 1:08 pm
     # 1:26 pm
     # 1:32 pm
+## 3/14/23
+
+    # 11:29 am - added docstrings
 
 
 def make_ind_dict():
+
+    """Makes a dictionary to categorize industries"""
 
     return {
         "Public Relations": [
@@ -917,6 +919,8 @@ def investor_dict():
 
 
 def make_tag_dict():
+
+    """Makes a dictioanry to categorize tags"""
 
     return {
         "AI": [
