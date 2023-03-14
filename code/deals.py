@@ -14,6 +14,8 @@ REACHOUT_DIR = os.path.join(CLEAN_DIR, "reachouts")
 
 def batch_move_deal_dict(inpath, stage):
 
+    """Moves bulk deals from one stage to another in the CRM"""
+
     df = pd.read_csv(inpath)
     ids = list(df["id"].values)
 
@@ -24,6 +26,8 @@ def batch_move_deal_dict(inpath, stage):
 
 
 def get_associations(dict_list):
+
+    """Gets associations for deals in the CRM from a dict list"""
 
     for dictionary in dict_list:
 
@@ -101,8 +105,6 @@ def merge_associations(df):
 
 if __name__ == "__main__":
 
-    
-
-    associations_dictionary = get_deals_by_pipeline([], "default")
-    df = get_associations(associations_dictionary)
-    send_csv("galongoria0@gmail.com", "Austin", "saveday_reachouts", df)
+    # associations_dictionary = get_deals_by_pipeline([], "default")
+    # df = get_associations(associations_dictionary)
+    # send_csv("galongoria0@gmail.com", "Austin", "saveday_reachouts", df)

@@ -60,6 +60,8 @@ Set the rate limit for contacts at no more than 10
 
 
 def counter(item_list):
+
+    """Counts items from a list"""
     
     count_dict = {}
     for item in item_list:
@@ -72,6 +74,8 @@ def counter(item_list):
 
 
 def count_stage(l):
+
+    """Lambda function for coutning the stages that an investor has been involved in."""
     
     new_l = []
     
@@ -90,6 +94,8 @@ def count_stage(l):
 
 def get_stages(csv_inpath):
 
+    """Gets the stages in a company after a certain date"""
+
     df = pd.read_csv(csv_inpath)
     df["date"] = pd.to_datetime(df["date"])
     df = df[df["date"] > datetime.datetime(2019, 12, 31)]
@@ -102,6 +108,8 @@ def get_stages(csv_inpath):
     return df
 
 def rank_top5(count_dict, column):
+
+    """Finds the top 5 most used words from a list of words"""
     
     data = {column: list(count_dict.keys()), 'count': list(count_dict.values())}
     df = pd.DataFrame.from_dict(data)
@@ -113,6 +121,8 @@ def rank_top5(count_dict, column):
 
 def rank_top1(count_dict, column):
 
+    """Finds the most used word in a list of words"""
+
     data = {column: list(count_dict.keys()), 'count': list(count_dict.values())}
     df = pd.DataFrame.from_dict(data)
     df.sort_values(['count'], ascending=False,inplace=True)
@@ -123,7 +133,7 @@ def rank_top1(count_dict, column):
 
 def explode_df(csv_inpath, industry_column, split_on):
 
-    """Takes the dataframe and explodes on the industry"""
+    """Cleans the dataframe and explodes on the industry"""
 
     df = pd.read_csv(csv_inpath).rename(columns={industry_column: "industries"})
     df["ref"] = df["industries"]
@@ -138,7 +148,7 @@ def explode_df(csv_inpath, industry_column, split_on):
 
 def map_groups(exploded_df, new_col, map_dict):
 
-    """Takes the exploded dataframe and groups the industries more generally"""
+    """Takes the exploded dataframe and groups the industries based on a mapping dictionary"""
 
     merge_df = exploded_df.copy(deep=True)
     merge_df[new_col] = ""
@@ -159,10 +169,14 @@ def map_groups(exploded_df, new_col, map_dict):
 
 def aggregate(df, dictionary):
 
+    """Aggregates the dataframe based on columns specificied in the dictionary parameter"""
+
     return df.groupby(df.index).agg(dictionary)
 
 
 def mental_health(df):
+
+    """Creates a mental health industry based on a company description mentioning mental health"""
 
     df['description'] = df['description'].apply(lambda x: x.lower())
     df.loc[
@@ -173,6 +187,8 @@ def mental_health(df):
 
 
 def map_subindustries(ind_list):
+
+    """If a broad industry and a subcategory of that indsustry are listed together, this function removes the more general industry"""
 
     ind_tuples = [
         ("Mental Health", "Health"),
@@ -198,6 +214,8 @@ def map_subindustries(ind_list):
 
 def make_property_dict(df, column):
 
+    """Makes a dictionary from the created dataframe to use for API put calls"""
+
     df = df[~df[column].isnull()]
     print(df)
 
@@ -213,6 +231,11 @@ def make_property_dict(df, column):
 
 
 def rate_limit_company(rate, dict_list):
+
+    """Rate limiter for put calls to the HubSpot CRM API. 
+    Recommend 100 for the rate limit.
+    """
+
 
     end = False
 
@@ -235,6 +258,9 @@ def rate_limit_company(rate, dict_list):
 
 
 def startup_ind_main():
+
+    """Collects the set of industries that we categorize for a startup."""
+
 
     df = map_groups(
         explode_df(STARTPATH, "industries", ","), "pf_inds", make_ind_dict()
@@ -261,6 +287,9 @@ def startup_ind_main():
 
 def startup_tag_main():
 
+
+    """Collects the set of tags that we categorize for a startup."""
+
     df = map_groups(
         explode_df(STARTPATH, "industries", ","), "pf_tags", make_tag_dict()
     )
@@ -284,6 +313,9 @@ def startup_tag_main():
 
 def tx_angel_ind_main():
 
+    """Collects the set of all industries that exist for an investor in the TX Angel csv."""
+
+
     df = map_groups(explode_df(TX_ANGEL_RAW_INPATH, "Preferred Industry", ","), "tx_angel_inds", make_ind_dict())
     df = aggregate(
         df,
@@ -304,6 +336,8 @@ def tx_angel_ind_main():
 
 
 def tx_angel_tag_main():
+
+    """Collects the set of all tags that exist for an investor in the TX Angel csv."""
 
     df = map_groups(explode_df(TX_ANGEL_RAW_INPATH, "Preferred Industry", ","), "tx_angel_tags", make_tag_dict())
     df = aggregate(
@@ -326,6 +360,8 @@ def tx_angel_tag_main():
 
 
 def inv_stages_main():
+
+    """Collects the set of all stage types that an investor has participated in."""
     
     df = get_stages(INVOV_INPATH)
     df['stage'] = df['stage'].apply(lambda x: f";{';'.join(count_stage(x))}")
@@ -333,6 +369,8 @@ def inv_stages_main():
 
 
 def get_top1_industries(df, internal_label):
+
+    """Gets the most used industry for a given investor's portfolio."""
 
     df['counts'] = df[internal_label].apply(lambda x: counter(x))
     df['top1_inds'] = df['counts'].apply(lambda x: rank_top1(x, 'industry'))
@@ -342,6 +380,8 @@ def get_top1_industries(df, internal_label):
 
 
 def get_top5_industries(df, internal_label):
+
+    """Gets the top 5 most used industries for a given investor's portfolio."""
     
     df['counts'] = df[internal_label].apply(lambda x: counter(x))
     df['top5_inds'] = df['counts'].apply(lambda x: rank_top5(x, 'industry'))
@@ -351,6 +391,8 @@ def get_top5_industries(df, internal_label):
 
 def get_top1_tags(df, internal_label):
 
+    """Gets the most used tag for a given investor's portfolio."""
+
     df['counts'] = df[internal_label].apply(lambda x: counter(x))
     df['top1_tags'] = df['counts'].apply(lambda x: rank_top1(x, 'tag'))
     df['Record ID'] = df.index
@@ -358,6 +400,8 @@ def get_top1_tags(df, internal_label):
     return df
 
 def get_top5_tags(df, internal_label):
+
+    """Gets the top 5 most used tags for a given investor's portfolio."""
     
     df['counts'] = df[internal_label].apply(lambda x: counter(x))
     df['top5_tags'] = df['counts'].apply(lambda x: rank_top5(x, 'tag'))
@@ -368,7 +412,9 @@ def get_top5_tags(df, internal_label):
 
 def make_options_dataframe(mapping_function, name, groupby):
 
-    """ mapping_function: this should be a function with 'main' in the method's name; output is a dataframe
+    """Outputs final dataframe with information that will be inputted to the CRM.
+
+    mapping_function: this should be a function with 'main' in the method's name; output is a dataframe
 
     name: this is a column of the mapped industry, which will also be the internal hubspot name
 
@@ -389,6 +435,9 @@ def make_options_dataframe(mapping_function, name, groupby):
     return df
 
 def make_options_dict(df, column):
+
+    """Creates a dictionary from the dataframe that was created in make_options_dataframe for the API put call."""
+
 
     df = df[~df[column].isnull()]
     tags = "".join(list(df[column].values))
